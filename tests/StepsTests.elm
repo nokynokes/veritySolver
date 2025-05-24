@@ -6,14 +6,48 @@ import Test exposing (..)
 import Shapes exposing(Shape2D(..), Shape3D(..))
 import Statues.Internal exposing (Position(..))
 import Statues exposing (Statue)
-import Steps.Internal exposing (Step, generateStep)
+import Steps.Internal exposing (Step, StatueDissect, generateStep)
 import Steps exposing (generateSteps)
+
+
+type alias StepValidation = 
+    { position : Position
+    , outsideShape : Shape3D
+    , shapeToDissect : Shape2D
+    }
+
+validateStep : StatueDissect -> StepValidation -> Bool
+validateStep step expected =
+    step.statueAfterDissect.position == expected.position
+        && step.statueAfterDissect.outsideShape == expected.outsideShape
+        && step.shapeToDissect == expected.shapeToDissect
+
+validateSteps : Step -> StepValidation -> StepValidation -> Expectation
+validateSteps (step1, step2) expected1 expected2 = 
+    if validateStep step1 expected1 && validateStep step2 expected2 then
+        Expect.pass
+    else
+        Expect.fail "Step did not match expected transformation"
+
+
+singleStep : (Statue, Statue) -> (StepValidation, StepValidation) -> Expectation
+singleStep (statue1, statue2) (expected1, expected2) =
+    case generateStep statue1 statue2 of
+        Just step -> validateSteps step expected1 expected2
+        Nothing -> Expect.fail "It should have generated a step"
 
 generateStatue : Position -> Shape2D -> Shape3D -> Statue
 generateStatue pos shape2d shape3d = 
     { position = pos
     , insideShape = shape2d
     , outsideShape = shape3d
+    }
+
+generateExpectedStep : Position -> Shape3D -> Shape2D -> StepValidation
+generateExpectedStep pos outsideShape shapeToDissect =
+    { position = pos
+    , outsideShape = outsideShape
+    , shapeToDissect = shapeToDissect
     }
 
 generateSingleStepTests : Test
@@ -24,50 +58,24 @@ generateSingleStepTests =
                     let
                         statue1 = generateStatue Middle Square Prism
                         statue2 = generateStatue Left Circle Cone
+                        expectedStep1 = generateExpectedStep Middle Cone Square
+                        expectedStep2 = generateExpectedStep Left Prism Circle
                     in
-                        case generateStep statue1 statue2 of
-                            Just steps -> 
-                                let 
-                                    (step1, step2) = steps
-                                in
-                                    case (step1.statueAfterDissect.position, step1.statueAfterDissect.outsideShape, step1.shapeToDissect) of
-                                        (Middle, Cone, Square) -> 
-                                            case (step2.statueAfterDissect.position, step2.statueAfterDissect.outsideShape, step2.shapeToDissect) of
-                                                (Left, Prism, Circle) -> Expect.pass
-                                                _ -> Expect.fail "It should have generated a step to subtract cricle from cone and create a Prism"
-                                        _ -> Expect.fail "It should have generated a step to subtract square from prism and create a cone"
-                            _ -> Expect.fail "It should have generated one step"
+                       singleStep (statue1, statue2) (expectedStep1, expectedStep2)
             , test "should swap Triangle with Circle when single shapes" <|
                 \_ -> 
                     let
                         statue1 = generateStatue Right Triangle Prism
                         statue2 = generateStatue Left Circle Sphere
+                        expectedStep1 = generateExpectedStep Right Cylinder Triangle
+                        expectedStep2 = generateExpectedStep Left Cone Circle
                     in
-                        case generateStep statue1 statue2 of
-                            Just steps -> 
-                                let 
-                                    (step1, step2) = steps
-                                in
-                                    case (step1.statueAfterDissect.position, step1.statueAfterDissect.outsideShape, step1.shapeToDissect) of
-                                        (Right, Cylinder, Triangle) -> 
-                                            case (step2.statueAfterDissect.position, step2.statueAfterDissect.outsideShape, step2.shapeToDissect) of
-                                                (Left, Cone, Circle) -> Expect.pass
-                                                _ -> Expect.fail "It should have generated a step to subtract circle from sphere and create a cone"
-                                        _ -> Expect.fail "It should have generated a step to subtract triangle from prism and create a clyinder"
-                            _ -> Expect.fail "It should have generated one step"
+                        singleStep (statue1, statue2) (expectedStep1, expectedStep2)
             , test "should not be able to generate a step" <|
                 \_ -> 
                     let
-                        statue1 = 
-                            { position = Middle
-                            , insideShape = Square
-                            , outsideShape = Cone 
-                            }
-                        statue2 = 
-                            { position = Left
-                            , insideShape = Circle
-                            , outsideShape = Cone
-                            }
+                        statue1 = generateStatue Middle Square Cone
+                        statue2 = generateStatue Left Circle Cone
                     in
                         case generateStep statue1 statue2 of
                             Nothing -> Expect.pass
@@ -77,37 +85,19 @@ generateSingleStepTests =
                     let
                         statue1 = generateStatue Left Circle Cube
                         statue2 = generateStatue Right Square Pyramid
+                        expectedStep1 = generateExpectedStep Left Prism Square
+                        expectedStep2 = generateExpectedStep Right Prism Triangle
                     in
-                        case generateStep statue1 statue2 of
-                            Just steps -> 
-                                let 
-                                    (step1, step2) = steps
-                                in
-                                    case (step1.statueAfterDissect.position, step1.statueAfterDissect.outsideShape, step1.shapeToDissect) of
-                                        (Left, Prism, Square) -> 
-                                            case (step2.statueAfterDissect.position, step2.statueAfterDissect.outsideShape, step2.shapeToDissect) of
-                                                (Right, Prism, Triangle) -> Expect.pass
-                                                _ -> Expect.fail "It should have generated a step to subtract triangle from pyramid and create a Prism"
-                                        _ -> Expect.fail "It should have generated a step to subtract square from cube and create a Prism"
-                            _ -> Expect.fail "It should have generated one step"
+                       singleStep (statue1, statue2) (expectedStep1, expectedStep2)
             , test "should swap Square with Circle when inside shapes are same as double shapes" <|
                 \_ -> 
                     let
                         statue1 = generateStatue Left Circle Sphere
                         statue2 = generateStatue Middle Square Cube
+                        expectedStep1 = generateExpectedStep Left Cylinder Circle
+                        expectedStep2 = generateExpectedStep Middle Cylinder Square
                     in
-                        case generateStep statue1 statue2 of
-                            Just steps -> 
-                                let 
-                                    (step1, step2) = steps
-                                in
-                                    case (step1.statueAfterDissect.position, step1.statueAfterDissect.outsideShape, step1.shapeToDissect) of
-                                        (Left, Cylinder, Circle) -> 
-                                            case (step2.statueAfterDissect.position, step2.statueAfterDissect.outsideShape, step2.shapeToDissect) of
-                                                (Middle, Cylinder, Square) -> Expect.pass
-                                                _ -> Expect.fail "It should have generated a step to subtract sqaure from cube and create a cylinder"
-                                        _ -> Expect.fail "It should have generated a step to subtract circle from sphere and create a clyinder"
-                            _ -> Expect.fail "It should have generated one step"
+                        singleStep (statue1, statue2) (expectedStep1, expectedStep2)
             ]
         
 statuesOrdered1 : List Statue
