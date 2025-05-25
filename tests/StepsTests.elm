@@ -1,4 +1,7 @@
-module StepsTests exposing (..)
+module StepsTests exposing 
+    ( generateSingleStepTests
+    , generateStepsTest
+    )
 
 import Expect exposing (..)
 import Test exposing (..)
