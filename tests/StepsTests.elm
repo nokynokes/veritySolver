@@ -49,16 +49,15 @@ manySteps statuesOrdered expectedSteps  =
             else
                 let
                     zippedList = List.map2 Tuple.pair steps expectedSteps
-                in
-                    List.foldl 
+                    validator = 
                         (\step acc -> 
                             if acc == Expect.pass then
                                 validateSteps step
                             else
                                 acc
                         ) 
-                        Expect.pass 
-                        zippedList
+                in
+                    List.foldl validator Expect.pass zippedList
         
 generateStatue : Position -> Shape2D -> Shape3D -> Statue
 generateStatue pos shape2d shape3d = 
