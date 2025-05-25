@@ -22,8 +22,8 @@ validateStep step expected =
         && step.statueAfterDissect.outsideShape == expected.outsideShape
         && step.shapeToDissect == expected.shapeToDissect
 
-validateSteps : Step -> StepValidation -> StepValidation -> Expectation
-validateSteps (step1, step2) expected1 expected2 = 
+validateSteps : (Step, (StepValidation, StepValidation)) -> Expectation
+validateSteps ((step1, step2), (expected1, expected2)) = 
     if validateStep step1 expected1 && validateStep step2 expected2 then
         Expect.pass
     else
@@ -33,9 +33,30 @@ validateSteps (step1, step2) expected1 expected2 =
 singleStep : (Statue, Statue) -> (StepValidation, StepValidation) -> Expectation
 singleStep (statue1, statue2) (expected1, expected2) =
     case generateStep statue1 statue2 of
-        Just step -> validateSteps step expected1 expected2
+        Just step -> validateSteps (step, (expected1, expected2))
         Nothing -> Expect.fail "It should have generated a step"
 
+manySteps : List Statue -> List (StepValidation, StepValidation) -> Expectation
+manySteps statuesOrdered expectedSteps  =
+    case generateSteps statuesOrdered of
+        [] -> Expect.fail "It should have generated some amount of steps"
+        steps -> 
+            if List.length steps /= List.length expectedSteps then
+                Expect.fail "It should have generated the same amount of expected steps"
+            else
+                let
+                    zippedList = List.map2 Tuple.pair steps expectedSteps
+                in
+                    List.foldl 
+                        (\step acc -> 
+                            if acc == Expect.pass then
+                                validateSteps step
+                            else
+                                acc
+                        ) 
+                        Expect.pass 
+                        zippedList
+        
 generateStatue : Position -> Shape2D -> Shape3D -> Statue
 generateStatue pos shape2d shape3d = 
     { position = pos
@@ -100,42 +121,31 @@ generateSingleStepTests =
                         singleStep (statue1, statue2) (expectedStep1, expectedStep2)
             ]
         
-statuesOrdered1 : List Statue
-statuesOrdered1 = 
-    [   { insideShape = Square, outsideShape = Prism, position = Middle }
-    ,   { insideShape = Triangle, outsideShape = Prism, position = Right }
-    ,   { insideShape = Circle, outsideShape = Sphere, position = Left }
-    ]
-
-statuesOrdered2 : List Statue
-statuesOrdered2 = 
-    [   { insideShape = Circle, outsideShape = Sphere, position = Left }
-    ,   { insideShape = Square, outsideShape = Cube, position = Middle }
-    ,   { insideShape = Triangle, outsideShape = Pyramid, position = Right }
-    ]
 
 generateStepsTest : Test
 generateStepsTest = 
-    describe "Generate Steps btwn all three statues" 
+    describe "Generate Steps between all three statues" 
         [   describe "in exactly two steps"
-                [   test "should dissect btwn middle and left first then right and left"
+                [   test "should dissect between middle and left first then right and left"
                         (\_ -> 
                             let 
-                                steps = generateSteps statuesOrdered1 
+                                statuesOrdered = 
+                                    [   generateStatue Middle Square Prism
+                                    ,   generateStatue Right Triangle Prism
+                                    ,   generateStatue Left Circle Sphere
+                                    ]
+
+                                expectedSteps1 = 
+                                    (   generateExpectedStep Middle Cone Square
+                                    ,   generateExpectedStep Left Cylinder Circle
+                                    )
+                                expectedSteps2 =
+                                    (   generateExpectedStep Right Cylinder Triangle
+                                    ,   generateExpectedStep Left Prism Circle
+                                    )
+                                expectedSteps = [ expectedSteps1, expectedSteps2 ]
                             in
-                                case steps of
-                                    [step1, step2] -> 
-                                        let
-                                            (statue1, statue2) = step1
-                                            (statue11, statue22) = step2
-                                        in
-                                            case ((statue1.statueAfterDissect.position, statue1.shapeToDissect, statue1.statueAfterDissect.outsideShape), (statue2.statueAfterDissect.position, statue2.shapeToDissect, statue2.statueAfterDissect.outsideShape)) of 
-                                                ((Middle, Square, Cone), (Left, Circle, Cylinder)) -> 
-                                                    case ((statue11.statueAfterDissect.position, statue11.shapeToDissect, statue11.statueAfterDissect.outsideShape), (statue22.statueAfterDissect.position, statue22.shapeToDissect, statue22.statueAfterDissect.outsideShape)) of
-                                                        ((Right, Triangle, Cylinder), (Left, Circle, Prism)) -> Expect.pass
-                                                        _ -> Expect.fail "it should dissect a triangle off of right and cirlce off of left"
-                                                _ -> Expect.fail "it should dissect a square off of middle and cirlce off of left"
-                                    _ -> Expect.fail "it should generate only 2 steps"
+                                manySteps statuesOrdered expectedSteps
                         )
 
                 ]
@@ -143,28 +153,26 @@ generateStepsTest =
                 [   test "should dissect btwn Left and Middle first then middle and right"
                         (\_ -> 
                             let
-                                steps = generateSteps statuesOrdered2
+                                statuesOrdered = 
+                                    [   generateStatue Left Circle Sphere
+                                    ,   generateStatue Middle Square Cube
+                                    ,   generateStatue Right Triangle Pyramid
+                                    ]
+                                expectedSteps1 = 
+                                    (   generateExpectedStep Left Cylinder Circle
+                                    ,   generateExpectedStep Middle Cylinder Square    
+                                    )
+                                expectedSteps2 =
+                                    (   generateExpectedStep Left Prism Circle
+                                    ,   generateExpectedStep Right Cone Triangle
+                                    )
+                                expectedSteps3 =
+                                    (   generateExpectedStep Middle Cone Square
+                                    ,   generateExpectedStep Right Cylinder Triangle
+                                    )
+                                expectedSteps = [ expectedSteps1, expectedSteps2, expectedSteps3 ]
                             in
-                                case steps of
-                                    [step1, step2 , step3] -> 
-                                        let
-                                            (statue1, statue2) = step1
-                                            (statue11, statue22) = step2
-                                            (statue111, statue222) = step3
-                                        in
-                                            case ((statue1.statueAfterDissect.position, statue1.shapeToDissect, statue1.statueAfterDissect.outsideShape), (statue2.statueAfterDissect.position, statue2.shapeToDissect, statue2.statueAfterDissect.outsideShape)) of
-                                                ((Left, Circle, Cylinder), (Middle, Square, Cylinder)) -> 
-                                                    case ((statue11.statueAfterDissect.position, statue11.shapeToDissect, statue11.statueAfterDissect.outsideShape), (statue22.statueAfterDissect.position, statue22.shapeToDissect, statue22.statueAfterDissect.outsideShape)) of
-                                                        ((Left, Circle, Prism), (Right, Triangle, Cone)) -> 
-                                                            case ((statue111.statueAfterDissect.position, statue111.shapeToDissect, statue111.statueAfterDissect.outsideShape), (statue222.statueAfterDissect.position, statue222.shapeToDissect, statue222.statueAfterDissect.outsideShape)) of
-                                                                ((Middle, Square, Cone), (Right, Triangle, Cylinder)) -> Expect.pass
-                                                                _ -> Expect.fail "it should dissect a sqaure off of middle and a triangle off of right"
-                                                        _ -> Expect.fail "it should dissect a circle off of left and a triangle off of right"
-                                                _ -> Expect.fail "it should dissect a circle off of left and square off of middle"
-                                        
-                                    _ -> Expect.fail "it should generate only 3 steps"
-
-                            
+                                manySteps statuesOrdered expectedSteps                            
                         )
                 ]
 
