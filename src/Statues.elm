@@ -12,16 +12,6 @@ type alias Statue =
 
 
 isComplete : Shape2D -> Shape3D -> Bool
-isComplete inside outside =
-    case ( inside, outside ) of
-        ( Circle, Prism ) ->
-            True
-
-        ( Square, Cone ) ->
-            True
-
-        ( Triangle, Cylinder ) ->
-            True
-
-        _ ->
-            False
+isComplete inside (Extrusion outside1 outside2) =
+    inside /= outside1 && inside /= outside2
+   
