@@ -1,11 +1,9 @@
 module View.Steps exposing (renderSteps)
 
-import Css exposing (Style)
 import Html.Styled as Html exposing (Html, div, h1, h2, hr, text)
 import Html.Styled.Attributes as Html exposing (css, step)
 import Msg exposing (Msg)
-import Shapes exposing (toString2D, toString3D)
-import Statues exposing (isComplete)
+import Shapes exposing (toString2D, toString3D, isComplete)
 import Statues.Internal exposing (Position(..), toString)
 import Steps.Internal exposing (StatueDissect, Step)
 import Tailwind.Breakpoints as Bp

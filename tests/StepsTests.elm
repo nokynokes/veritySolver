@@ -11,18 +11,36 @@ import Statues.Internal exposing (Position(..))
 import Statues exposing (Statue)
 import Steps.Internal exposing (Step, StatueDissect, generateStep)
 import Steps exposing (generateSteps)
-
+import Shapes exposing (isCone, isCube, isCylinder, isPrism, isSphere, isPyramid)
 
 type alias StepValidation = 
     { position : Position
-    , outsideShape : Shape3D
+    , checkOutsideShape : Shape3D -> Bool
     , shapeToDissect : Shape2D
     }
+
+sphere : Shape3D
+sphere = Extrusion Circle Circle
+
+cube : Shape3D
+cube = Extrusion Square Square
+
+pyramid : Shape3D
+pyramid = Extrusion Triangle Triangle
+
+prism : Shape3D
+prism = Extrusion Square Triangle
+
+cylinder : Shape3D
+cylinder = Extrusion Circle Square
+
+cone : Shape3D
+cone = Extrusion Circle Triangle
 
 validateStep : StatueDissect -> StepValidation -> Bool
 validateStep step expected =
     step.statueAfterDissect.position == expected.position
-        && step.statueAfterDissect.outsideShape == expected.outsideShape
+        && expected.checkOutsideShape step.statueAfterDissect.outsideShape
         && step.shapeToDissect == expected.shapeToDissect
 
 validateSteps : (Step, (StepValidation, StepValidation)) -> Expectation
@@ -57,7 +75,7 @@ manySteps statuesOrdered expectedSteps  =
                                 acc
                         ) 
                 in
-                    List.foldl validator Expect.pass zippedList
+                    List.foldl validator (Expect.fail "Invalid step") zippedList
         
 generateStatue : Position -> Shape2D -> Shape3D -> Statue
 generateStatue pos shape2d shape3d = 
@@ -66,10 +84,10 @@ generateStatue pos shape2d shape3d =
     , outsideShape = shape3d
     }
 
-generateExpectedStep : Position -> Shape3D -> Shape2D -> StepValidation
-generateExpectedStep pos outsideShape shapeToDissect =
+generateExpectedStep : Position -> (Shape3D -> Bool) -> Shape2D -> StepValidation
+generateExpectedStep pos checker shapeToDissect =
     { position = pos
-    , outsideShape = outsideShape
+    , checkOutsideShape = checker
     , shapeToDissect = shapeToDissect
     }
 
@@ -79,26 +97,26 @@ generateSingleStepTests =
         [   test "should swap Square with Circle when single shapes" <|
                 \_ -> 
                     let
-                        statue1 = generateStatue Middle Square Prism
-                        statue2 = generateStatue Left Circle Cone
-                        expectedStep1 = generateExpectedStep Middle Cone Square
-                        expectedStep2 = generateExpectedStep Left Prism Circle
+                        statue1 = generateStatue Middle Square prism
+                        statue2 = generateStatue Left Circle cone
+                        expectedStep1 = generateExpectedStep Middle isCone Square
+                        expectedStep2 = generateExpectedStep Left isPrism Circle
                     in
                        singleStep (statue1, statue2) (expectedStep1, expectedStep2)
             , test "should swap Triangle with Circle when single shapes" <|
                 \_ -> 
                     let
-                        statue1 = generateStatue Right Triangle Prism
-                        statue2 = generateStatue Left Circle Sphere
-                        expectedStep1 = generateExpectedStep Right Cylinder Triangle
-                        expectedStep2 = generateExpectedStep Left Cone Circle
+                        statue1 = generateStatue Right Triangle prism
+                        statue2 = generateStatue Left Circle sphere
+                        expectedStep1 = generateExpectedStep Right isCylinder Triangle
+                        expectedStep2 = generateExpectedStep Left isCone Circle
                     in
                         singleStep (statue1, statue2) (expectedStep1, expectedStep2)
             , test "should not be able to generate a step" <|
                 \_ -> 
                     let
-                        statue1 = generateStatue Middle Square Cone
-                        statue2 = generateStatue Left Circle Cone
+                        statue1 = generateStatue Middle Square cone
+                        statue2 = generateStatue Left Circle cone
                     in
                         case generateStep statue1 statue2 of
                             Nothing -> Expect.pass
@@ -106,19 +124,19 @@ generateSingleStepTests =
             , test "should swap Square with Circle" <|
                 \_ -> 
                     let
-                        statue1 = generateStatue Left Circle Cube
-                        statue2 = generateStatue Right Square Pyramid
-                        expectedStep1 = generateExpectedStep Left Prism Square
-                        expectedStep2 = generateExpectedStep Right Prism Triangle
+                        statue1 = generateStatue Left Circle cube
+                        statue2 = generateStatue Right Square pyramid
+                        expectedStep1 = generateExpectedStep Left isPrism Square
+                        expectedStep2 = generateExpectedStep Right isPrism Triangle
                     in
                        singleStep (statue1, statue2) (expectedStep1, expectedStep2)
             , test "should swap Square with Circle when inside shapes are same as double shapes" <|
                 \_ -> 
                     let
-                        statue1 = generateStatue Left Circle Sphere
-                        statue2 = generateStatue Middle Square Cube
-                        expectedStep1 = generateExpectedStep Left Cylinder Circle
-                        expectedStep2 = generateExpectedStep Middle Cylinder Square
+                        statue1 = generateStatue Left Circle sphere
+                        statue2 = generateStatue Middle Square cube
+                        expectedStep1 = generateExpectedStep Left isCylinder Circle
+                        expectedStep2 = generateExpectedStep Middle isCylinder Square
                     in
                         singleStep (statue1, statue2) (expectedStep1, expectedStep2)
             ]
@@ -132,18 +150,18 @@ generateStepsTest =
                         (\_ -> 
                             let 
                                 statuesOrdered = 
-                                    [   generateStatue Middle Square Prism
-                                    ,   generateStatue Right Triangle Prism
-                                    ,   generateStatue Left Circle Sphere
+                                    [   generateStatue Middle Square prism
+                                    ,   generateStatue Right Triangle prism
+                                    ,   generateStatue Left Circle sphere
                                     ]
 
                                 expectedSteps1 = 
-                                    (   generateExpectedStep Middle Cone Square
-                                    ,   generateExpectedStep Left Cylinder Circle
+                                    (   generateExpectedStep Middle isCone Square
+                                    ,   generateExpectedStep Left isCylinder Circle
                                     )
                                 expectedSteps2 =
-                                    (   generateExpectedStep Right Cylinder Triangle
-                                    ,   generateExpectedStep Left Prism Circle
+                                    (   generateExpectedStep Right isCylinder Triangle
+                                    ,   generateExpectedStep Left isPrism Circle
                                     )
                                 expectedSteps = [ expectedSteps1, expectedSteps2 ]
                             in
@@ -156,21 +174,21 @@ generateStepsTest =
                         (\_ -> 
                             let
                                 statuesOrdered = 
-                                    [   generateStatue Left Circle Sphere
-                                    ,   generateStatue Middle Square Cube
-                                    ,   generateStatue Right Triangle Pyramid
+                                    [   generateStatue Left Circle sphere
+                                    ,   generateStatue Middle Square cube
+                                    ,   generateStatue Right Triangle pyramid
                                     ]
                                 expectedSteps1 = 
-                                    (   generateExpectedStep Left Cylinder Circle
-                                    ,   generateExpectedStep Middle Cylinder Square    
+                                    (   generateExpectedStep Left isCylinder Circle
+                                    ,   generateExpectedStep Middle isCylinder Square    
                                     )
                                 expectedSteps2 =
-                                    (   generateExpectedStep Left Prism Circle
-                                    ,   generateExpectedStep Right Cone Triangle
+                                    (   generateExpectedStep Left isPrism Circle
+                                    ,   generateExpectedStep Right isCone Triangle
                                     )
                                 expectedSteps3 =
-                                    (   generateExpectedStep Middle Cone Square
-                                    ,   generateExpectedStep Right Cylinder Triangle
+                                    (   generateExpectedStep Middle isCone Square
+                                    ,   generateExpectedStep Right isCylinder Triangle
                                     )
                                 expectedSteps = [ expectedSteps1, expectedSteps2, expectedSteps3 ]
                             in

@@ -1,18 +1,33 @@
-module View.Statues exposing (renderStatue)
+module View.Statues exposing (renderStatue, checkLimits)
 
 import Css exposing (hover, position)
 import Css.Global
 import Html.Styled as Html exposing (Html, div, h2, hr, text)
 import Html.Styled.Attributes as Html exposing (checked, css)
 import Html.Styled.Events exposing (onCheck)
-import Model exposing (StatueSelection, maxNumberOf2DShapes, numberOfCircles, numberOfSquares, numberOfTriangles)
+import Model exposing (StatueSelection)
 import Msg exposing (Msg(..))
-import Shapes exposing (Shape2D(..), Shape3D(..), isIllegalShapeToStart, toString2D, toString3D)
-import Statues exposing (isComplete)
 import Statues.Internal exposing (Position(..), toString)
-import Tailwind.Breakpoints as Bp
 import Tailwind.Theme as Theme
 import Tailwind.Utilities as Tw
+import Shapes exposing 
+    ( Shape2D(..)
+    , Shape3D(..)
+    , maxNumberOf2DShapes
+    , numberOfCircles
+    , numberOfSquares
+    , numberOfTriangles
+    , isComplete
+    , toString2D
+    , toString3D
+    , isCone
+    , isCube
+    , isCylinder
+    , isPrism
+    , isPyramid
+    , isSphere
+    )
+
 
 
 radioButton : Bool -> Bool -> Position -> Msg -> String -> String -> Html Msg
@@ -133,39 +148,49 @@ radioButtonGroupOuterStatue selectedOutsideShapes position selectedShapeInside s
 
                     isDisabled =
                         (Maybe.withDefault False <|
-                            Maybe.map (\s -> isIllegalShapeToStart s shape) selectedShapeInside
+                            Maybe.map (\s -> isComplete s shape) selectedShapeInside
                         )
-                            || checkLimts selectedOutsideShapes shape
+                            || checkLimits selectedOutsideShapes shape
                 in
                 radioButton isSelected isDisabled position (messageHandler shape) radioButtonClass (toString3D shape)
             )
             shapes
 
 
-checkLimts : List Shape3D -> Shape3D -> Bool
-checkLimts shapes selection =
-    case selection of
-        Sphere ->
-            numberOfCircles shapes == maxNumberOf2DShapes || numberOfCircles shapes + 2 > maxNumberOf2DShapes
-
-        Cube ->
-            numberOfSquares shapes == maxNumberOf2DShapes || numberOfSquares shapes + 2 > maxNumberOf2DShapes
-
-        Pyramid ->
-            numberOfTriangles shapes == maxNumberOf2DShapes || numberOfTriangles shapes + 2 > maxNumberOf2DShapes
-
-        Cone ->
-            (numberOfTriangles shapes == maxNumberOf2DShapes || numberOfCircles shapes == maxNumberOf2DShapes)
-                || (numberOfTriangles shapes + 1 > maxNumberOf2DShapes || numberOfCircles shapes + 1 > maxNumberOf2DShapes)
-
-        Cylinder ->
-            (numberOfCircles shapes == maxNumberOf2DShapes || numberOfSquares shapes == maxNumberOf2DShapes)
-                || (numberOfCircles shapes + 1 > maxNumberOf2DShapes || numberOfSquares shapes + 1 > maxNumberOf2DShapes)
-
-        Prism ->
-            (numberOfTriangles shapes == maxNumberOf2DShapes || numberOfSquares shapes == maxNumberOf2DShapes)
-                || (numberOfTriangles shapes + 1 > maxNumberOf2DShapes || numberOfSquares shapes + 1 > maxNumberOf2DShapes)
-
+checkLimits : List Shape3D -> Shape3D -> Bool
+checkLimits shapes selection =
+    let
+      foldOr = List.foldl (||) False
+    in
+        if isSphere selection then
+            foldOr [ numberOfCircles shapes == maxNumberOf2DShapes, numberOfCircles shapes + 2 > maxNumberOf2DShapes ]
+        else if isCube selection then
+            foldOr [ numberOfSquares shapes == maxNumberOf2DShapes, numberOfSquares shapes + 2 > maxNumberOf2DShapes ]
+        else if isPyramid selection then
+            foldOr [ numberOfTriangles shapes == maxNumberOf2DShapes, numberOfTriangles shapes + 2 > maxNumberOf2DShapes ]
+        else if isCone selection then
+            foldOr 
+                [ numberOfCircles shapes == maxNumberOf2DShapes 
+                , numberOfTriangles shapes == maxNumberOf2DShapes 
+                , numberOfCircles shapes + 1 > maxNumberOf2DShapes 
+                , numberOfTriangles shapes + 1 > maxNumberOf2DShapes
+                ]
+        else if isCylinder selection then
+            foldOr 
+                [ numberOfCircles shapes == maxNumberOf2DShapes 
+                , numberOfSquares shapes == maxNumberOf2DShapes
+                , numberOfCircles shapes + 1 > maxNumberOf2DShapes 
+                , numberOfSquares shapes + 1 > maxNumberOf2DShapes
+                ]
+        else if isPrism selection then
+            foldOr 
+                [ numberOfTriangles shapes == maxNumberOf2DShapes 
+                , numberOfSquares shapes == maxNumberOf2DShapes
+                , numberOfTriangles shapes + 1 > maxNumberOf2DShapes
+                , numberOfSquares shapes + 1 > maxNumberOf2DShapes
+                ]
+        else 
+            False
 
 renderStatue : List Shape2D -> List Shape3D -> Position -> StatueSelection -> Html Msg
 renderStatue selectedInsideShapes selectedOutsideShapes position statueSelections =
@@ -196,8 +221,8 @@ renderStatue selectedInsideShapes selectedOutsideShapes position statueSelection
             [ div
                 [ css [ Tw.py_2 ] ]
                 [ Html.p [ css [ Tw.my_1, Tw.text_xl ] ] [ text "Outside Shape" ]
-                , radioButtonGroupOuterStatue selectedOutsideShapes position statueSelections.insideShape statueSelections.outsideShape [ Sphere, Cube, Pyramid ]
-                , radioButtonGroupOuterStatue selectedOutsideShapes position statueSelections.insideShape statueSelections.outsideShape [ Prism, Cone, Cylinder ]
+                , radioButtonGroupOuterStatue selectedOutsideShapes position statueSelections.insideShape statueSelections.outsideShape [ Extrusion Circle Circle, Extrusion Square Square, Extrusion Triangle Triangle ]
+                , radioButtonGroupOuterStatue selectedOutsideShapes position statueSelections.insideShape statueSelections.outsideShape [ Extrusion Square Triangle, Extrusion Circle Triangle, Extrusion Circle Square ]
                 ]
             ]
         ]

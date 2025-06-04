@@ -5,21 +5,12 @@ import Statues exposing (Statue)
 import Statues.Internal exposing (Position)
 import Statues.Internal exposing (Position(..))
 
-
 numberOfStepsToCompelete : Shape2D -> Shape3D -> Int
-numberOfStepsToCompelete insideShape outsideShape =
-    case ( insideShape, outsideShape ) of
-        ( Circle, Sphere ) ->
-            2
-
-        ( Square, Cube ) ->
-            2
-
-        ( Triangle, Pyramid ) ->
-            2
-
-        _ ->
-            1
+numberOfStepsToCompelete insideShape (Extrusion shape1 shape2) =
+    if insideShape == shape1 && insideShape == shape2 then
+        2
+    else
+        1
 
 positionOrder : Position -> Int
 positionOrder pos = 

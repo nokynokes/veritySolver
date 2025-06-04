@@ -1,7 +1,8 @@
 module Steps exposing (generateSteps)
 
-import Statues exposing (Statue, isComplete)
+import Statues exposing (Statue)
 import Steps.Internal exposing (Step, generateStep)
+import Shapes exposing (isComplete)
 
 
 type StepBuild 
