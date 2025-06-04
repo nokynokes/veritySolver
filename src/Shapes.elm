@@ -15,9 +15,15 @@ module Shapes exposing
     , isCylinder
     , isCone
     , isPrism
+    , numberOfCircles
+    , numberOfSquares
+    , numberOfTriangles
+    , maxNumberOf2DShapes
     )
 
 import List.Extra exposing (find)
+import Svg.Styled.Attributes exposing (x)
+import Html.Attributes exposing (shape)
 
 type Shape2D
     = Circle
@@ -162,7 +168,40 @@ toString3D shape =
     else
         "Unknown Shape"
 
-
 isComplete : Shape2D -> Shape3D -> Bool
 isComplete inside (Extrusion outside1 outside2) =
     inside /= outside1 && inside /= outside2
+
+fold3D : (Shape3D -> x -> x) -> x -> Shape3D -> x
+fold3D f acc shape = f shape acc
+
+maxNumberOf2DShapes : Int
+maxNumberOf2DShapes =
+    2
+
+numberOfShapes : Shape2D -> Shape3D -> Int
+numberOfShapes shape2D = 
+    fold3D (\(Extrusion s1 s2) acc -> 
+        acc 
+        + (if s1 == shape2D then 1 else 0)
+        + (if s2 == shape2D then 1 else 0)
+    ) 0
+
+numberOfCircles : List Shape3D -> Int
+numberOfCircles =
+    numberOf2DShapesSelected Circle
+
+numberOfSquares : List Shape3D -> Int
+numberOfSquares =
+    numberOf2DShapesSelected Square
+
+numberOfTriangles : List Shape3D -> Int
+numberOfTriangles =
+    numberOf2DShapesSelected Triangle
+
+numberOf2DShapesSelected : Shape2D -> List Shape3D -> Int
+numberOf2DShapesSelected shape shapes3D =
+    List.foldl
+        (\s acc -> acc + numberOfShapes shape s)
+        0
+        shapes3D

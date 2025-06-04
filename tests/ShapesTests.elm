@@ -1,6 +1,6 @@
 module ShapesTests exposing (..)
 
-import Shapes exposing (Shape2D(..), Shape3D(..), combine, subtract, shapesMissing, isComplete, hasShapes, removeForDoubleShapes, isSphere, isCube, isPyramid, isCylinder, isCone, isPrism)
+import Shapes exposing (Shape2D(..), Shape3D(..), combine, subtract, shapesMissing, isComplete, hasShapes, removeForDoubleShapes, isSphere, isCube, isPyramid, isCylinder, isCone, isPrism, numberOfCircles, numberOfSquares, numberOfTriangles)
 import Test exposing (..)
 import Expect exposing (..)
 
@@ -285,3 +285,78 @@ removeForDoubleShapesTest =
             \_ -> 
                 (removeForDoubleShapes (Extrusion Square Circle), removeForDoubleShapes (Extrusion Circle Square)) |> Expect.equal (Nothing, Nothing)
         ]
+
+numberOfStepsTests : Test
+numberOfStepsTests =
+    let
+        sphere : Shape3D
+        sphere = Extrusion Circle Circle
+
+        cube : Shape3D
+        cube = Extrusion Square Square
+
+        pyramid : Shape3D
+        pyramid = Extrusion Triangle Triangle
+
+        prism : Shape3D
+        prism = Extrusion Square Triangle
+
+        cylinder : Shape3D
+        cylinder = Extrusion Circle Square
+
+        cone : Shape3D
+        cone = Extrusion Circle Triangle
+    in
+        describe "numberOfStepsTests" 
+            [ describe "numberOfCircles" 
+                [ test "should be 2 circles in a sphere" <|
+                    (\_ -> 
+                        numberOfCircles [sphere]
+                            |> Expect.equal 2
+                    )
+                , test "should be 1 circle in a cone" <|
+                    (\_ -> 
+                        numberOfCircles [cone]
+                            |> Expect.equal 1
+                    )
+                , test "should be 1 circle in a cylinder" <|
+                    (\_ -> 
+                        numberOfCircles [cone]
+                            |> Expect.equal 1
+                    )
+                ]
+            , describe "numberOfSquares" 
+                [ test "should be 2 squares in a cube" <|
+                    (\_ -> 
+                        numberOfSquares [cube]
+                            |> Expect.equal 2
+                    )
+                , test "should be 1 square in a prism" <|
+                    (\_ -> 
+                        numberOfSquares [prism]
+                            |> Expect.equal 1
+                    )
+                , test "should be 1 square in a cylinder" <|
+                    (\_ -> 
+                        numberOfSquares [cylinder]
+                            |> Expect.equal 1
+                    )
+                ]
+            , describe "numberOfTriangles" 
+                [ test "should be 2 triangles in a pyramid" <|
+                    (\_ -> 
+                        numberOfTriangles [pyramid]
+                            |> Expect.equal 2
+                    )
+                , test "should be 1 triangle in a cone" <|
+                    (\_ -> 
+                        numberOfTriangles [cone]
+                            |> Expect.equal 1
+                    )
+                , test "should be 1 triangle in a prism" <|
+                    (\_ -> 
+                        numberOfTriangles [prism]
+                            |> Expect.equal 1
+                    )
+                ]
+            ]
