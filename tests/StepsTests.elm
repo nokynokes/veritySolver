@@ -75,7 +75,7 @@ manySteps statuesOrdered expectedSteps  =
                                 acc
                         ) 
                 in
-                    List.foldl validator Expect.pass zippedList
+                    List.foldl validator (Expect.fail "Invalid step") zippedList
         
 generateStatue : Position -> Shape2D -> Shape3D -> Statue
 generateStatue pos shape2d shape3d = 

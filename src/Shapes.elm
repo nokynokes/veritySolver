@@ -22,7 +22,6 @@ module Shapes exposing
     )
 
 import List.Extra exposing (find)
-import Svg.Styled.Attributes exposing (x)
 import Html.Attributes exposing (shape)
 
 type Shape2D
